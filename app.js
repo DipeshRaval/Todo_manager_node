@@ -1,6 +1,9 @@
 const express = require("express");
 const app = express();
 const { Todo } = require("./models");
+const cookieParser = require("cookie-parser");
+// const csrf = require("csurf");
+const csrf = require("tiny-csrf");
 const bodyParser = require("body-parser");
 const path = require("path");
 const { response } = require("express");
@@ -11,23 +14,33 @@ app.set("view engine", "ejs");
 app.use(express.static(path.join(__dirname + "/public")));
 // app.use(express.static("public"));
 
+// for csrf token
+// app.use(cookieParser("shh! some secret string"));
+app.use(cookieParser("Important string"));
+app.use(csrf("123456789iamasecret987654321look", ["POST", "PUT", "DELETE"]));
+
+//End-POints
 app.get("/", async (req, res) => {
   const allTodos = await Todo.getTodos();
   const overdue = await Todo.overDue();
   const dueLater = await Todo.dueLater();
   const dueToday = await Todo.dueToday();
+  const completedItems = await Todo.completedItems();
   if (req.accepts("html")) {
     res.render("index", {
       allTodos,
       overdue,
       dueLater,
       dueToday,
+      completedItems,
+      csrfToken: req.csrfToken(),
     });
   } else {
     res.json({
       overdue,
       dueToday,
       dueLater,
+      completedItems,
     });
   }
 });
@@ -57,11 +70,12 @@ app.post("/todos", async (req, res) => {
   }
 });
 
-app.put("/todos/:id/markAsCompleted", async (req, res) => {
+app.put("/todos/:id", async (req, res) => {
+  console.log(req.body);
   console.log("Todo marks completed : ", req.params.id);
   const todo = await Todo.findByPk(req.params.id);
   try {
-    const updateTodo = await todo.markAsCompleted();
+    const updateTodo = await todo.setCompletionStatus(req.body.completed);
     return res.json(updateTodo);
   } catch (error) {
     console.log(error);
