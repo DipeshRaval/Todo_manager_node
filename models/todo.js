@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
       return this.findAll({
         where: {
           dueDate: {
-            [Op.lt]: new Date().toISOString(),
+            [Op.lt]: new Date().toLocaleDateString("en-CA"),
           },
           completed: false,
         },
@@ -35,7 +35,7 @@ module.exports = (sequelize, DataTypes) => {
       return this.findAll({
         where: {
           dueDate: {
-            [Op.eq]: new Date().toISOString(),
+            [Op.eq]: new Date().toLocaleDateString("en-CA"),
           },
           completed: false,
         },
@@ -46,7 +46,7 @@ module.exports = (sequelize, DataTypes) => {
       return this.findAll({
         where: {
           dueDate: {
-            [Op.gt]: new Date().toISOString(),
+            [Op.gt]: new Date().toLocaleDateString("en-CA"),
           },
           completed: false,
         },
