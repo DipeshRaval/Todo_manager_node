@@ -1,12 +1,76 @@
+/* eslint-disable no-unused-vars */
 const express = require("express");
 const app = express();
-const { Todo } = require("./models");
+const { Todo, User } = require("./models");
 const cookieParser = require("cookie-parser");
 // const csrf = require("csurf");
 const csrf = require("tiny-csrf");
 const bodyParser = require("body-parser");
 const path = require("path");
 const { response } = require("express");
+
+//passport js for aurthentication
+const passport = require("passport");
+const LocalStrategy = require("passport-local");
+const connectEnsureLogin = require("connect-ensure-login");
+const session = require("express-session");
+const bcrypt = require("bcrypt");
+const saltRound = 10;
+
+app.use(
+  session({
+    secret: "my-secret-ket-232423234234234234",
+    cookie: {
+      maxAge: 24 * 60 * 60 * 1000,
+    },
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+// creating passport stretargy
+passport.use(
+  new LocalStrategy(
+    {
+      usernameField: "email",
+      passwordField: "password",
+    },
+    (username, password, done) => {
+      User.findOne({
+        where: {
+          email: username,
+        },
+      })
+        .then(async (user) => {
+          const bool = await bcrypt.compare(password, user.password);
+          if (bool) {
+            return done(null, user);
+          } else {
+            return done("Invalid Password");
+          }
+        })
+        .catch((err) => {
+          return err;
+        });
+    }
+  )
+);
+
+passport.serializeUser((user, done) => {
+  console.log("Serialize the user with Id : ", user.id);
+  done(null, user.id);
+});
+
+passport.deserializeUser((id, done) => {
+  User.findByPk(id)
+    .then((user) => {
+      done(null, user);
+    })
+    .catch((err) => {
+      done(err, null);
+    });
+});
 
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: false }));
@@ -21,14 +85,22 @@ app.use(csrf("123456789iamasecret987654321look", ["POST", "PUT", "DELETE"]));
 
 //End-POints
 app.get("/", async (req, res) => {
-  const allTodos = await Todo.getTodos();
-  const overdue = await Todo.overDue();
-  const dueLater = await Todo.dueLater();
-  const dueToday = await Todo.dueToday();
-  const completedItems = await Todo.completedItems();
+  res.render("index", {
+    title: "Todo Application",
+    csrfToken: req.csrfToken(),
+  });
+});
+
+app.get("/todos", connectEnsureLogin.ensureLoggedIn(), async (req, res) => {
+  const loginUserId = req.user.id;
+  // const allTodos = await Todo.getTodos();
+  const overdue = await Todo.overDue(loginUserId);
+  const dueLater = await Todo.dueLater(loginUserId);
+  const dueToday = await Todo.dueToday(loginUserId);
+  const completedItems = await Todo.completedItems(loginUserId);
   if (req.accepts("html")) {
-    res.render("index", {
-      allTodos,
+    res.render("todosPage", {
+      // allTodos,
       overdue,
       dueLater,
       dueToday,
@@ -45,32 +117,24 @@ app.get("/", async (req, res) => {
   }
 });
 
-app.get("/todos", async (req, res) => {
-  try {
-    const todos = await Todo.findAll({ order: [["id", "ASC"]] });
-    return res.json(todos);
-  } catch (error) {
-    console.log(error);
-    return res.status(422).json(error);
-  }
-});
-
-app.post("/todos", async (req, res) => {
+app.post("/todos", connectEnsureLogin.ensureLoggedIn(), async (req, res) => {
   console.log("Body : ", req.body);
+  console.log(req.user);
   try {
     await Todo.addTodo({
       title: req.body.title,
       dueDate: req.body.dueDate,
       completed: false,
+      userId: req.user.id,
     });
-    return res.redirect("/");
+    return res.redirect("/todos");
   } catch (error) {
     console.log(error);
     return response.status(422).json(error);
   }
 });
 
-app.put("/todos/:id", async (req, res) => {
+app.put("/todos/:id", connectEnsureLogin.ensureLoggedIn(), async (req, res) => {
   console.log(req.body);
   console.log("Todo marks completed : ", req.params.id);
   const todo = await Todo.findByPk(req.params.id);
@@ -84,10 +148,67 @@ app.put("/todos/:id", async (req, res) => {
 });
 
 // eslint-disable-next-line no-unused-vars
-app.delete("/todos/:id", async (req, res) => {
-  console.log("We have to delete a Todo with ID: ", req.params.id);
-  const affectedRow = await Todo.destroy({ where: { id: req.params.id } });
-  res.send(affectedRow ? true : false);
+app.delete(
+  "/todos/:id",
+  connectEnsureLogin.ensureLoggedIn(),
+  async (req, res) => {
+    console.log("We have to delete a Todo with ID: ", req.params.id);
+    const affectedRow = await Todo.remove(req.params.id, req.user.id);
+    res.send(affectedRow ? true : false);
+  }
+);
+
+// login routes
+app.get("/signup", (req, res) => {
+  res.render("signup", {
+    title: "signUp",
+    csrfToken: req.csrfToken(),
+  });
+});
+
+app.get("/login", (req, res) => {
+  res.render("login", {
+    title: "login",
+    csrfToken: req.csrfToken(),
+  });
+});
+
+app.get("/signout", (req, res, next) => {
+  req.logout((err) => {
+    if (err) return next(err);
+    res.redirect("/");
+  });
+});
+
+app.post(
+  "/session",
+  passport.authenticate("local", { failureRedirect: "/login" }),
+  (req, res) => {
+    console.log(req.user);
+    res.redirect("/todos");
+  }
+);
+
+app.post("/users", async (req, res) => {
+  console.log("Body : ", req.body.firstName);
+  const pwd = await bcrypt.hash(req.body.password, saltRound);
+  try {
+    const user = await User.create({
+      firstName: req.body.firstName,
+      lastName: req.body.lastName,
+      email: req.body.email,
+      password: pwd,
+    });
+    req.logIn(user, (err) => {
+      if (err) {
+        console.log(err);
+      }
+      return res.redirect("/todos");
+    });
+  } catch (error) {
+    console.log(error);
+    return response.status(422).json(error);
+  }
 });
 
 module.exports = app;
