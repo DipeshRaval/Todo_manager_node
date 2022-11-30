@@ -9,6 +9,11 @@ const bodyParser = require("body-parser");
 const path = require("path");
 const { response } = require("express");
 
+//flash
+const flash = require("connect-flash");
+app.set("views", path.join(__dirname, "views"));
+app.use(flash());
+
 //passport js for aurthentication
 const passport = require("passport");
 const LocalStrategy = require("passport-local");
@@ -47,7 +52,9 @@ passport.use(
           if (bool) {
             return done(null, user);
           } else {
-            return done("Invalid Password");
+            return done(null, false, {
+              message: "Invalid password",
+            });
           }
         })
         .catch((err) => {
@@ -82,6 +89,12 @@ app.use(express.static(path.join(__dirname + "/public")));
 // app.use(cookieParser("shh! some secret string"));
 app.use(cookieParser("Important string"));
 app.use(csrf("123456789iamasecret987654321look", ["POST", "PUT", "DELETE"]));
+
+// for the flash
+app.use(function (request, response, next) {
+  response.locals.messages = request.flash();
+  next();
+});
 
 //End-POints
 app.get("/", async (req, res) => {
@@ -182,7 +195,10 @@ app.get("/signout", (req, res, next) => {
 
 app.post(
   "/session",
-  passport.authenticate("local", { failureRedirect: "/login" }),
+  passport.authenticate("local", {
+    failureRedirect: "/login",
+    failureFlash: true,
+  }),
   (req, res) => {
     console.log(req.user);
     res.redirect("/todos");

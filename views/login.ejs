@@ -14,6 +14,13 @@
       <div class="col-span-2 col-start-3">
         <%- include("header.ejs") %>
         <h6 class="mb-4 text-xl text-gray-900">Login to Todo Application</h6>
+
+        <% if(messages && messages.error && messages.error.length > 0)  { %>
+          <% for(var i=0; i<messages.error.length; i++) { %>
+                  <h2 class="mb-2 text-xl text-rose-500	"> <%= messages.error[i] %></h2>
+          <% } %>
+        <% } %>
+
         <form action="/session" method="post">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
           <div>
@@ -48,6 +55,7 @@
             />
           </div>
         </form>
+
       </div>
     </div>
   </body>
