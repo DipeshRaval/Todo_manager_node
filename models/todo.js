@@ -99,10 +99,22 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         validate: {
           notNull: true,
-          len: 5,
+          len: {
+            args: 5,
+            msg: "Title length must greater than 5",
+          },
         },
       },
-      dueDate: DataTypes.DATEONLY,
+      dueDate: {
+        type: DataTypes.DATEONLY,
+        allowNull: false,
+        validate: {
+          notNull: true,
+          notEmpty: {
+            msg: "Please enter a valid date",
+          },
+        },
+      },
       completed: DataTypes.BOOLEAN,
     },
     {

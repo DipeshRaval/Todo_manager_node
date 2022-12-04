@@ -57,8 +57,8 @@ passport.use(
             });
           }
         })
-        .catch((err) => {
-          return err;
+        .catch((error) => {
+          return done(error);
         });
     }
   )
@@ -91,17 +91,22 @@ app.use(cookieParser("Important string"));
 app.use(csrf("123456789iamasecret987654321look", ["POST", "PUT", "DELETE"]));
 
 // for the flash
-app.use(function (request, response, next) {
-  response.locals.messages = request.flash();
+app.use(function (req, res, next) {
+  const data = req.flash();
+  res.locals.messages = data;
   next();
 });
 
 //End-POints
 app.get("/", async (req, res) => {
-  res.render("index", {
-    title: "Todo Application",
-    csrfToken: req.csrfToken(),
-  });
+  if (req.session.passport) {
+    res.redirect("/todos");
+  } else {
+    res.render("index", {
+      title: "Todo Application",
+      csrfToken: req.csrfToken(),
+    });
+  }
 });
 
 app.get("/todos", connectEnsureLogin.ensureLoggedIn(), async (req, res) => {
@@ -131,6 +136,7 @@ app.get("/todos", connectEnsureLogin.ensureLoggedIn(), async (req, res) => {
 });
 
 app.post("/todos", connectEnsureLogin.ensureLoggedIn(), async (req, res) => {
+  console.log(req.body.dueDate);
   console.log("Body : ", req.body);
   console.log(req.user);
   try {
@@ -143,7 +149,21 @@ app.post("/todos", connectEnsureLogin.ensureLoggedIn(), async (req, res) => {
     return res.redirect("/todos");
   } catch (error) {
     console.log(error);
-    return response.status(422).json(error);
+    console.log(error.name);
+    if (error.name == "SequelizeValidationError") {
+      error.errors.forEach((e) => {
+        if (e.message == "Title length must greater than 5") {
+          req.flash("error", "Title length must greater than 5");
+        }
+        if (e.message == "Please enter a valid date") {
+          req.flash("error", "Please enter a valid date");
+        }
+      });
+      return res.redirect("/todos");
+    } else {
+      // return res.redirect("/todos");
+      return response.status(422).json(error);
+    }
   }
 });
 
@@ -223,7 +243,21 @@ app.post("/users", async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    return response.status(422).json(error);
+    console.log(error.name);
+    if (error.name == "SequelizeValidationError") {
+      error.errors.forEach((e) => {
+        if (e.message == "Please provide a firstName") {
+          req.flash("error", "Please provide a firstName");
+        }
+        if (e.message == "Please provide email_id") {
+          req.flash("error", "Please provide email_id");
+        }
+      });
+      return res.redirect("/signup");
+    } else {
+      // return res.redirect("/todos");
+      return response.status(422).json(error);
+    }
   }
 });
 
