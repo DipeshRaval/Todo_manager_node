@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="csrf-token" content="<%= csrfToken %>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ejs Templating</title>
+    <title>Todos</title>
     <link rel="stylesheet" href="/css/style.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -61,6 +61,7 @@
     <div class="grid grid-cols-6">
       <div class="col-span-2 col-start-3">
         <%- include("header.ejs") %>
+
         <p class="mb-2 mt-1 text-xl text-gray-900">
           <a href="/signout">SignOut</a>
         </p>

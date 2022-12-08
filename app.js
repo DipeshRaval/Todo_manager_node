@@ -161,7 +161,6 @@ app.post("/todos", connectEnsureLogin.ensureLoggedIn(), async (req, res) => {
       });
       return res.redirect("/todos");
     } else {
-      // return res.redirect("/todos");
       return response.status(422).json(error);
     }
   }
@@ -186,8 +185,13 @@ app.delete(
   connectEnsureLogin.ensureLoggedIn(),
   async (req, res) => {
     console.log("We have to delete a Todo with ID: ", req.params.id);
-    const affectedRow = await Todo.remove(req.params.id, req.user.id);
-    res.send(affectedRow ? true : false);
+    try {
+      const affectedRow = await Todo.remove(req.params.id, req.user.id);
+      res.send(affectedRow ? true : false);
+    } catch (error) {
+      console.log(error);
+      return response.status(422).json(error);
+    }
   }
 );
 
@@ -255,7 +259,6 @@ app.post("/users", async (req, res) => {
       });
       return res.redirect("/signup");
     } else {
-      // return res.redirect("/todos");
       return response.status(422).json(error);
     }
   }
