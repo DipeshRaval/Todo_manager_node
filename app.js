@@ -140,8 +140,10 @@ app.post("/todos", connectEnsureLogin.ensureLoggedIn(), async (req, res) => {
   console.log("Body : ", req.body);
   console.log(req.user);
   try {
+    const title = req.body.title;
+    console.log(title.trim().length);
     await Todo.addTodo({
-      title: req.body.title,
+      title: title.trim(),
       dueDate: req.body.dueDate,
       completed: false,
       userId: req.user.id,
@@ -153,7 +155,7 @@ app.post("/todos", connectEnsureLogin.ensureLoggedIn(), async (req, res) => {
     if (error.name == "SequelizeValidationError") {
       error.errors.forEach((e) => {
         if (e.message == "Title length must greater than 5") {
-          req.flash("error", "Title length must greater than 5");
+          req.flash("error", "Title length must greater than or equal to 5");
         }
         if (e.message == "Please enter a valid date") {
           req.flash("error", "Please enter a valid date");
