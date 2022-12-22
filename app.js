@@ -48,12 +48,19 @@ passport.use(
         },
       })
         .then(async (user) => {
-          const bool = await bcrypt.compare(password, user.password);
-          if (bool) {
-            return done(null, user);
+          // console.log(user.email);
+          if (user) {
+            const bool = await bcrypt.compare(password, user.password);
+            if (bool) {
+              return done(null, user);
+            } else {
+              return done(null, false, {
+                message: "Invalid password",
+              });
+            }
           } else {
             return done(null, false, {
-              message: "Invalid password",
+              message: "With This email user doesn't exists",
             });
           }
         })
@@ -111,6 +118,9 @@ app.get("/", async (req, res) => {
 
 app.get("/todos", connectEnsureLogin.ensureLoggedIn(), async (req, res) => {
   const loginUserId = req.user.id;
+  console.log(req.user);
+  console.log(req.user.id);
+  console.log(req.user.firstName);
   // const allTodos = await Todo.getTodos();
   const overdue = await Todo.overDue(loginUserId);
   const dueLater = await Todo.dueLater(loginUserId);
@@ -123,6 +133,7 @@ app.get("/todos", connectEnsureLogin.ensureLoggedIn(), async (req, res) => {
       dueLater,
       dueToday,
       completedItems,
+      user: req.user.firstName,
       csrfToken: req.csrfToken(),
     });
   } else {
@@ -257,6 +268,13 @@ app.post("/users", async (req, res) => {
         }
         if (e.message == "Please provide email_id") {
           req.flash("error", "Please provide email_id");
+        }
+      });
+      return res.redirect("/signup");
+    } else if (error.name == "SequelizeUniqueConstraintError") {
+      error.errors.forEach((e) => {
+        if (e.message == "email must be unique") {
+          req.flash("error", "User with this email already exists");
         }
       });
       return res.redirect("/signup");
