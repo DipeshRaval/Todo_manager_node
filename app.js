@@ -379,12 +379,18 @@ const mailHandler = async () => {
   });
 };
 
-cron.schedule("0 6 * * *", () => {
-  try {
-    mailHandler();
-  } catch (error) {
-    console.log(error);
+cron.schedule(
+  "20 20 * * *",
+  () => {
+    try {
+      mailHandler();
+    } catch (error) {
+      console.log(error);
+    }
+  },
+  {
+    timezone: "Asia/Kolkata",
   }
-});
+);
 
 module.exports = app;
