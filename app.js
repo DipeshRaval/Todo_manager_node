@@ -8,6 +8,10 @@ const csrf = require("tiny-csrf");
 const bodyParser = require("body-parser");
 const path = require("path");
 const { response } = require("express");
+require("dotenv").config();
+
+const cron = require("node-cron");
+const mail = require("./mail");
 
 //flash
 const flash = require("connect-flash");
@@ -16,6 +20,7 @@ app.use(flash());
 
 //passport js for aurthentication
 const passport = require("passport");
+const GoogleStrategy = require("passport-google-oauth2").Strategy;
 const LocalStrategy = require("passport-local");
 const connectEnsureLogin = require("connect-ensure-login");
 const session = require("express-session");
@@ -71,6 +76,38 @@ passport.use(
   )
 );
 
+//google stretergy
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: "http://localhost:3000/auth/google/callback",
+      passReqToCallback: true,
+    },
+    function (request, accessToken, refreshToken, profile, done) {
+      // console.log("profile : " + profile);
+      User.findOne({
+        where: {
+          email: profile.email,
+        },
+      })
+        .then(async (user) => {
+          // console.log(user.email);
+          if (user) {
+            return done(null, user);
+          } else {
+            return done(null, false, {
+              message: "With This email user doesn't exists",
+            });
+          }
+        })
+        .catch((error) => {
+          return done(error);
+        });
+    }
+  )
+);
 passport.serializeUser((user, done) => {
   console.log("Serialize the user with Id : ", user.id);
   done(null, user.id);
@@ -281,6 +318,72 @@ app.post("/users", async (req, res) => {
     } else {
       return response.status(422).json(error);
     }
+  }
+});
+
+app.get(
+  "/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: "/login",
+    failureFlash: true,
+  }),
+  (req, res) => {
+    res.redirect("/todos");
+  }
+);
+
+const mailHandler = async () => {
+  // code to send emails here...
+  const today = new Date().toISOString().split("T")[0];
+
+  const inCompleteTodos = await Todo.inCompletedByToday(today);
+
+  let sendMailUser = inCompleteTodos.map((todo) => todo.userId);
+  sendMailUser = [...new Set(sendMailUser)];
+
+  sendMailUser.forEach(async (userId) => {
+    const user = await User.findByPk(userId);
+
+    const reaminsTodosForUser = await Todo.reaminsTodosForUser(today, userId);
+
+    let taskList = reaminsTodosForUser.map((todo, i) => {
+      return `${i + 1} ${todo.title}`;
+    });
+
+    mail(
+      user.email,
+      "Friendly Reminder: Pending To-Do's Update",
+      `Dear ${user.firstName},
+
+      I hope this email finds you well. As a gentle reminder, our server has detected a few pending to-do items associated with your account. We encourage you to take a moment to review and complete these tasks for smoother workflow and better organization.
+
+      Here's a quick summary of your pending to-do's:
+
+      ${taskList.join("")}
+
+      Please log in to your account and access the 'To-Do' section to view the detailed list and associated deadlines. Our team is always available to assist you with any questions or clarifications you may have regarding these tasks.
+
+      Taking prompt action on these pending to-do's will not only help you stay on top of your responsibilities but also contribute to the overall efficiency of our operations.
+
+      If you have already completed any of these tasks, kindly ignore this email. We appreciate your attention to this matter and thank you for using our platform to manage your tasks.
+
+      Thank you for your cooperation.
+      Best regards,
+      Todo App`
+    );
+  });
+};
+
+cron.schedule("0 6 * * *", () => {
+  try {
+    mailHandler();
+  } catch (error) {
+    console.log(error);
   }
 });
 

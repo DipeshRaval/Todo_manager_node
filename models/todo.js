@@ -91,6 +91,25 @@ module.exports = (sequelize, DataTypes) => {
     // markAsCompleted() {
     //   return this.update({ completed: true });
     // }
+
+    static inCompletedByToday(today) {
+      return this.findAll({
+        where: {
+          completed: false,
+          dueDate: today,
+        },
+      });
+    }
+
+    static reaminsTodosForUser(dueDate, userId) {
+      return this.findAll({
+        where: {
+          dueDate,
+          completed: false,
+          userId,
+        },
+      });
+    }
   }
   Todo.init(
     {

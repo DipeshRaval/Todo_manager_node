@@ -3,6 +3,7 @@ const request = require("supertest");
 var cheerio = require("cheerio");
 const db = require("../models/index");
 const app = require("../app");
+// console.log(app);
 let server;
 let agent;
 
@@ -24,7 +25,8 @@ async function login(agent, username, password) {
 describe("Test case for database", () => {
   beforeAll(async () => {
     await db.sequelize.sync({ force: true });
-    server = app.listen(process.env.PORT || 5000, () => {});
+    server = await app.listen(process.env.PORT || 5000, () => {});
+    console.log(server);
     agent = request.agent(server);
   });
 
