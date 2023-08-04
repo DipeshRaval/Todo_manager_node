@@ -380,7 +380,7 @@ const mailHandler = async () => {
 };
 
 cron.schedule(
-  "01 06 * * *",
+  "00 12 * * *",
   () => {
     try {
       mailHandler();
