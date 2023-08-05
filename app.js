@@ -393,4 +393,6 @@ cron.schedule(
   }
 );
 
+console.log(process.env.GOOGLE_CLIENT_ID)
+console.log(process.env.GOOGLE_CLIENT_SECRET)
 module.exports = app;
